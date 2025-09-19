@@ -1,7 +1,7 @@
 {
   "name": "anonimlifeforlife",
   "version": "1.0.0",
-  "short_description": "Face anonymization worker using Fawkes",
+  "short_description": "Face anonymization proxy to VPS (Fawkes) with base64 return",
   "image": {
     "type": "dockerfile",
     "file": "Dockerfile"
@@ -10,8 +10,17 @@
     "entrypoint": "handler.handler",
     "timeout": 300
   },
+  "env": [
+    {
+      "name": "VPS_BASE_URL",
+      "description": "Your public VPS base URL, e.g., https://anon.donkeybee.com"
+    },
+    {
+      "name": "VPS_AUTH_TOKEN",
+      "description": "X-Auth-Token for your VPS API"
+    }
+  ],
   "resources": {
-    "gpu": false,
     "cpu": "2",
     "memory": "4Gi"
   }
