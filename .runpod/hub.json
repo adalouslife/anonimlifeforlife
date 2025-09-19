@@ -1,14 +1,59 @@
 {
-  "name": "anonimlifeforlife-bridge",
-  "version": "1.0.0",
-  "subtitle": "Fawkes bridge (Serverless CPU)",
-  "description": "Receives image_url, forwards to VPS (anon.donkeybee.com) running Fawkes, returns a public output_url.",
-  "tags": ["serverless", "bridge", "fawkes"],
+  "name": "AnonimLife Fawkes Bridge",
+  "tagline": "Bridge serverless ↔ VPS. Send an image URL, get back an anonymized output URL.",
+  "shortDescription": "Forwards images to your VPS (Fawkes running via Docker/Caddy on https://anon.donkeybee.com) and returns a public output_url.",
   "type": "serverless",
-  "entrypoint": "python -u handler.py",
+  "documentation": "README.md",
+  "config": {
+    "runsOn": "CPU",
+    "cpuFlavor": "AMD Ryzen 5 5600X 6-Core Processor",
+    "containerDiskInGb": 4
+  },
   "env": [
-    { "key": "VPS_BASE_URL", "required": true, "description": "https://anon.donkeybee.com" },
-    { "key": "PUBLIC_PATH_PREFIX", "required": false, "value": "/files" },
-    { "key": "REQUEST_TIMEOUT_SECONDS", "required": false, "value": "300" }
+    {
+      "key": "VPS_BASE_URL",
+      "value": "https://anon.donkeybee.com",
+      "required": true,
+      "description": "Your VPS domain (Caddy in front of the local Fawkes service)."
+    },
+    {
+      "key": "VPS_START_PATH",
+      "value": "/api/anonymize",
+      "required": false,
+      "advanced": true,
+      "description": "POST path to start a job. Body: { image_url, mode?, options? }"
+    },
+    {
+      "key": "VPS_STATUS_PATH",
+      "value": "/api/anonymize/{job_id}",
+      "required": false,
+      "advanced": true,
+      "description": "GET path to check job status. Must include {job_id}."
+    },
+    {
+      "key": "VPS_REQUEST_TIMEOUT_SECONDS",
+      "value": "30",
+      "required": false,
+      "advanced": true
+    },
+    {
+      "key": "VPS_POLL_INTERVAL_SECONDS",
+      "value": "2",
+      "required": false,
+      "advanced": true
+    },
+    {
+      "key": "VPS_POLL_TIMEOUT_SECONDS",
+      "value": "600",
+      "required": false,
+      "advanced": true
+    },
+    {
+      "key": "DRY_RUN",
+      "value": "false",
+      "required": false,
+      "advanced": true,
+      "description": "If true, bypass VPS and echo back the input image_url as output_url (for Hub tests)."
+    }
   ]
 }
