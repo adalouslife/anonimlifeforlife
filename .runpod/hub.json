@@ -1,92 +1,14 @@
 {
-  "title": "Fawkes Anonymizer Gateway",
-  "description": "Serverless bridge that accepts image URLs, forwards them to your VPS Fawkes service, and returns a public output URL.",
+  "name": "anonimlifeforlife-bridge",
+  "version": "1.0.0",
+  "subtitle": "Fawkes bridge (Serverless CPU)",
+  "description": "Receives image_url, forwards to VPS (anon.donkeybee.com) running Fawkes, returns a public output_url.",
+  "tags": ["serverless", "bridge", "fawkes"],
   "type": "serverless",
-  "category": "image",
-  "config": {
-    "runsOn": "CPU",
-    "cpuFlavor": "Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz",
-    "containerDiskInGb": 10,
-    "env": [
-      {
-        "key": "VPS_HOST",
-        "input": {
-          "name": "VPS Host",
-          "type": "string",
-          "description": "DNS name or IP of your VPS running the Fawkes API"
-        }
-      },
-      {
-        "key": "VPS_PORT",
-        "input": {
-          "name": "VPS Port",
-          "type": "number",
-          "description": "Port for your VPS API",
-          "default": 443
-        }
-      },
-      {
-        "key": "VPS_SCHEME",
-        "input": {
-          "name": "VPS Scheme",
-          "type": "string",
-          "description": "http or https",
-          "options": [
-            { "label": "https", "value": "https" },
-            { "label": "http", "value": "http" }
-          ],
-          "default": "https",
-          "advanced": true
-        }
-      },
-      {
-        "key": "VPS_API_KEY",
-        "input": {
-          "name": "VPS API Key",
-          "type": "string",
-          "description": "Bearer token (or key) your VPS expects"
-        }
-      },
-      {
-        "key": "RETURN_BASE_URL",
-        "input": {
-          "name": "Return base URL",
-          "type": "string",
-          "description": "CDN/base URL where anonymized outputs are hosted (e.g. https://cdn.example.com/anon/)"
-        }
-      },
-      {
-        "key": "REQUEST_TIMEOUT_S",
-        "input": {
-          "name": "VPS request timeout (seconds)",
-          "type": "number",
-          "description": "HTTP timeout for calls to the VPS",
-          "default": 25,
-          "min": 5,
-          "max": 120,
-          "advanced": true
-        }
-      },
-      {
-        "key": "ALLOW_OFFLINE",
-        "input": {
-          "type": "boolean",
-          "name": "Allow offline test mode",
-          "description": "If enabled, worker short-circuits VPS calls and returns a fake output URL so Hub tests pass without hitting your VPS.",
-          "default": true,
-          "trueValue": "true",
-          "falseValue": "false",
-          "advanced": true
-        }
-      }
-    ],
-    "presets": [
-      {
-        "name": "Default",
-        "defaults": {
-          "ALLOW_OFFLINE": true
-        }
-      }
-    ]
-  }
+  "entrypoint": "python -u handler.py",
+  "env": [
+    { "key": "VPS_BASE_URL", "required": true, "description": "https://anon.donkeybee.com" },
+    { "key": "PUBLIC_PATH_PREFIX", "required": false, "value": "/files" },
+    { "key": "REQUEST_TIMEOUT_SECONDS", "required": false, "value": "300" }
+  ]
 }
