@@ -1,3 +1,4 @@
+# slim Python, no GPUs needed for validation tests
 FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,11 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# only copy what we need first to leverage layer cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy code last for better caching
+# now copy code
 COPY handler.py vps_client.py ./
 
-# Explicit entrypoint so Hub/Serverless doesn’t default to “sleep”
-CMD ["python", "-u", "handler.py"]
+# runpod will start our handler loop; no ports exposed, no webserver
+CMD ["python","-u","-c","import handler; handler._boot()"]
