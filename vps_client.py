@@ -1,35 +1,61 @@
-import os, requests
-from typing import Optional, Tuple
+import os
+import requests
+from typing import Any, Dict, Optional
 
-class VPSJobError(Exception): pass
+class VpsClientError(Exception):
+    pass
 
-class VPSClient:
-    def __init__(self, base_url: str, api_key: str = "", user_agent: str = "vps-client/1.0"):
+class VpsClient:
+    def __init__(
+        self,
+        base_url: str,
+        start_path: str = "/api/anonymize",
+        status_path_template: str = "/api/anonymize/{job_id}",
+        request_timeout: int = 30,
+    ):
         self.base_url = base_url.rstrip("/")
-        self.session = requests.Session()
-        self.session.headers.update({"User-Agent": user_agent})
-        if api_key:
-            self.session.headers.update({"Authorization": f"Bearer {api_key}"})
-        self.path_upload = os.environ.get("VPS_PATH_UPLOAD", "/Upload")
-        self.path_query  = os.environ.get("VPS_PATH_QUERY",  "/query")
-        self.path_dl     = os.environ.get("VPS_PATH_DL",     "/download")
+        self.start_path = start_path
+        self.status_path_template = status_path_template
+        self.timeout = request_timeout
 
-    def upload(self, image_bytes: bytes, filename: str = "upload.jpg") -> str:
-        url = f"{self.base_url}{self.path_upload}"
-        files = {"file": (filename, image_bytes, "application/octet-stream")}
-        r = self.session.post(url, files=files, timeout=120)
-        r.raise_for_status()
-        data = r.json()
-        if "id" not in data:
-            raise VPSJobError(f"Unexpected /Upload response: {data}")
-        return str(data["id"])
+        # Optional: if your VPS later adds simple auth, you can pass it here.
+        self.api_key = os.getenv("VPS_API_KEY", "").strip()
+        self.api_header_name = os.getenv("VPS_API_HEADER", "X-API-Key")
 
-    def query(self, job_id: str) -> Tuple[str, Optional[str], Optional[str]]:
-        url = f"{self.base_url}{self.path_query}"
-        r = self.session.get(url, params={"id": job_id}, timeout=30)
-        r.raise_for_status()
-        data = r.json()
-        return str(data.get("status", "")), data.get("filename"), data.get("message")
+    def _headers(self) -> Dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers[self.api_header_name] = self.api_key
+        return headers
 
-    def download_url(self, filename: str) -> str:
-        return f"{self.base_url}{self.path_dl}/{filename}"
+    def _url(self, path: str) -> str:
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        if not path.startswith("/"):
+            path = "/" + path
+        return f"{self.base_url}{path}"
+
+    def start_job(self, image_url: str, mode: Optional[str] = None, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        payload = {"image_url": image_url}
+        if mode:
+            payload["mode"] = mode
+        if options:
+            payload["options"] = options
+
+        url = self._url(self.start_path)
+        try:
+            r = requests.post(url, json=payload, headers=self._headers(), timeout=self.timeout)
+            r.raise_for_status()
+            return r.json() if r.content else {}
+        except requests.RequestException as e:
+            raise VpsClientError(f"POST {url} failed: {e}") from e
+
+    def get_status(self, job_id: str) -> Dict[str, Any]:
+        path = self.status_path_template.replace("{job_id}", job_id)
+        url = self._url(path)
+        try:
+            r = requests.get(url, headers=self._headers(), timeout=self.timeout)
+            r.raise_for_status()
+            return r.json() if r.content else {}
+        except requests.RequestException as e:
+            raise VpsClientError(f"GET {url} failed: {e}") from e
