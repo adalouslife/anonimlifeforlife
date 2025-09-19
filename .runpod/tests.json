@@ -3,7 +3,7 @@
     {
       "name": "ping",
       "input": { "ping": true },
-      "expected": { "pong": true }
+      "expected": { "output.pong": true }
     }
   ]
 }
