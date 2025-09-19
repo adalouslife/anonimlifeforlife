@@ -1,9 +1,18 @@
 {
   "name": "anonimlifeforlife",
   "version": "1.0.0",
-  "short_description": "Hello world worker for Fawkes anonymizer",
-  "image": { "type": "dockerfile", "file": "Dockerfile" },
-  "handler": { "entrypoint": "handler.handler", "timeout": 120 },
-  "resources": { "gpu": false, "cpu": "1", "memory": "1Gi" },
-  "env": []
+  "short_description": "Minimal worker test",
+  "image": {
+    "type": "dockerfile",
+    "file": "Dockerfile"
+  },
+  "handler": {
+    "entrypoint": "handler.handler",
+    "timeout": 120
+  },
+  "resources": {
+    "gpu": false,
+    "cpu": "1",
+    "memory": "1Gi"
+  }
 }
