@@ -1,0 +1,12 @@
+{
+  "title": "AnonimLife Face Cloaker (Fawkes, CPU)",
+  "description": "Serverless endpoint that cloaks faces in images using Fawkes and returns a processed image URL.",
+  "type": "serverless",
+  "category": "image",
+  "config": {
+    "runsOn": "CPU",
+    "containerDiskInGb": 10,
+    "cpuFlavor": "Intel Core i9-13900K",
+    "env": []
+  }
+}
