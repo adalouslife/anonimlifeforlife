@@ -1,20 +1,20 @@
 {
+  "version": 1,
+  "timeout": 180,
   "tests": [
     {
-      "name": "cloak_from_url",
+      "name": "URL input",
       "input": {
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Kylie_Jenner2_%28cropped%29.png"
-      },
-      "timeout": 180000
+        "image_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+        "filename": "gh.png"
+      }
+    },
+    {
+      "name": "Base64 input (tiny data URL)",
+      "input": {
+        "image_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP2OVtP9wAAAABJRU5ErkJggg==",
+        "filename": "dot.png"
+      }
     }
-  ],
-  "config": {
-    "cpuFlavor": "cpu5c-2-4",
-    "env": [
-      { "key": "VPS_BASE",  "value": "https://anon.donkeybee.com" },
-      { "key": "VPS_TOKEN", "value": "dev-local-secret-change-me" }
-    ],
-    "warmTime": 0,
-    "cooldownTime": 0
-  }
+  ]
 }
