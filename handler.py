@@ -1,160 +1,99 @@
 import os
 import time
+import json
 import runpod
-import requests
-from urllib.parse import urlparse
+from vps_client import VpsClient, VpsClientError
 
-# --- Minimal env ---
-VPS_BASE_URL = os.getenv("VPS_BASE_URL", "").rstrip("/")  # e.g. https://anon.donkeybee.com
-PUBLIC_PATH_PREFIX = os.getenv("PUBLIC_PATH_PREFIX", "/files").rstrip("/") or "/files"
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "300"))
+# ---- Configuration via ENV ----
+VPS_BASE_URL = os.getenv("VPS_BASE_URL", "https://anon.donkeybee.com").rstrip("/")
+VPS_START_PATH = os.getenv("VPS_START_PATH", "/api/anonymize")
+VPS_STATUS_PATH = os.getenv("VPS_STATUS_PATH", "/api/anonymize/{job_id}")
 
-if not VPS_BASE_URL:
-    raise RuntimeError("VPS_BASE_URL is required (e.g. https://anon.donkeybee.com)")
+REQ_TIMEOUT = int(os.getenv("VPS_REQUEST_TIMEOUT_SECONDS", "30"))
+POLL_INTERVAL = float(os.getenv("VPS_POLL_INTERVAL_SECONDS", "2"))
+POLL_TIMEOUT = int(os.getenv("VPS_POLL_TIMEOUT_SECONDS", "600"))
 
-def _is_http_url(s: str) -> bool:
-    try:
-        p = urlparse(s)
-        return p.scheme in ("http", "https") and bool(p.netloc)
-    except Exception:
-        return False
+DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
-def _submit_job(image_url: str, **extra):
-    # Adjust the endpoint path if your Candy routes are different.
-    # Assumes your VPS exposes a job-creating endpoint.
-    payload = {"image_url": image_url}
-    payload.update({k: v for k, v in extra.items() if v is not None})
-    r = requests.post(f"{VPS_BASE_URL}/api/fawkes/jobs", json=payload, timeout=30)
-    r.raise_for_status()
-    return r.json()
+client = VpsClient(
+    base_url=VPS_BASE_URL,
+    start_path=VPS_START_PATH,
+    status_path_template=VPS_STATUS_PATH,
+    request_timeout=REQ_TIMEOUT,
+)
 
-def _poll_job(job_id: str, timeout_sec: int = REQUEST_TIMEOUT):
-    deadline = time.time() + timeout_sec
-    while time.time() < deadline:
-        r = requests.get(f"{VPS_BASE_URL}/api/fawkes/jobs/{job_id}", timeout=20)
-        r.raise_for_status()
-        data = r.json()
-        status = (data.get("status") or "").lower()
-        if status in ("completed", "failed", "error", "timeout"):
-            return data
-        time.sleep(1.8)
-    return {"status": "timeout", "job_id": job_id}
+def _fail(msg: str):
+    return {"status": "failed", "error": msg}
 
-def _to_public_url(vps_result: dict) -> str | None:
-    """
-    Normalize typical fields into a public URL:
-    - absolute http(s) -> return as-is
-    - '/files/abc.jpg' or 'files/abc.jpg' -> https://anon.donkeybee.com/files/abc.jpg
-    - '/var/.../files/abc.jpg' -> map using PUBLIC_PATH_PREFIX -> https://anon.donkeybee.com/files/abc.jpg
-    """
-    candidates = [
-        vps_result.get("output_url"),
-        vps_result.get("url"),
-        vps_result.get("result_url"),
-        vps_result.get("output_path"),
-        vps_result.get("path"),
-        vps_result.get("result_path"),
-        vps_result.get("file"),
-        vps_result.get("filename"),
-    ]
-
-    files = vps_result.get("files")
-    if isinstance(files, list):
-        for item in files:
-            if isinstance(item, dict):
-                candidates.extend([
-                    item.get("output_url"),
-                    item.get("url"),
-                    item.get("output_path"),
-                    item.get("path"),
-                ])
-            elif isinstance(item, str):
-                candidates.append(item)
-
-    for raw in candidates:
-        if not raw or not isinstance(raw, str):
-            continue
-
-        # already a public URL
-        if _is_http_url(raw):
-            return raw
-
-        # relative web path e.g. "/files/x.jpg" or "files/x.jpg"
-        if raw.startswith("/"):
-            # starts with "/files..." -> join with base
-            if raw.startswith(PUBLIC_PATH_PREFIX + "/"):
-                return f"{VPS_BASE_URL}{raw}"
-            # if it's some absolute FS path but contains ".../files/..."
-            marker = PUBLIC_PATH_PREFIX if PUBLIC_PATH_PREFIX.startswith("/") else f"/{PUBLIC_PATH_PREFIX}"
-            if marker in raw:
-                # strip prefix before marker, produce "/files/..."
-                tail = raw.split(marker, 1)[1].lstrip("/")
-                return f"{VPS_BASE_URL}{marker}/{tail}"
-
-        # bare "files/x.jpg"
-        if raw.startswith("files/") or raw.startswith(PUBLIC_PATH_PREFIX.lstrip("/") + "/"):
-            return f"{VPS_BASE_URL}/{raw}"
-
-    return None
+def _ok(url: str, meta: dict | None = None):
+    out = {"status": "completed", "output_url": url}
+    if meta:
+        out["meta"] = meta
+    return out
 
 def handler(event):
     """
-    Input:
-      { "input": { "image_url": "https://..." , ...optional knobs... } }
-    Output on success:
-      { "status": "completed", "job_id": "...", "output_url": "https://anon.donkeybee.com/files/..." }
+    Expected input:
+    {
+      "image_url": "https://example.com/photo.jpg",
+      "mode": "low|mid|high|... (optional, passthrough)",
+      "options": {...} (optional, passthrough),
+      "ping": true (optional health check)
+    }
     """
     try:
-        inp = (event or {}).get("input") or {}
-        image_url = inp.get("image_url")
+        data = event.get("input", {}) if isinstance(event, dict) else {}
+        if data.get("ping"):
+            return {"status": "ok", "message": "pong"}
+
+        image_url = data.get("image_url")
         if not image_url:
-            return {"error": "image_url is required"}
+            return _fail("Missing required 'image_url'.")
 
-        # Pass-thru optional flags if your VPS understands them (safe to omit)
-        submit_extras = {
-            "cloak_mode": inp.get("cloak_mode"),
-            "strong": inp.get("strong"),
-            "user_id": inp.get("user_id"),
-            "request_id": event.get("id"),
-        }
+        mode = data.get("mode")
+        options = data.get("options", {})
 
-        job = _submit_job(image_url, **submit_extras)
-        job_id = job.get("job_id") or job.get("id")
+        # Hub tests can run without touching the VPS
+        if DRY_RUN:
+            return _ok(image_url, meta={"dry_run": True})
+
+        # Kick off anonymization on VPS
+        start_resp = client.start_job(image_url=image_url, mode=mode, options=options)
+
+        # 1) If VPS returns output immediately (sync), pass it through
+        if isinstance(start_resp, dict) and start_resp.get("output_url"):
+            return _ok(start_resp["output_url"], meta={"sync": True})
+
+        # 2) Otherwise expect a job_id and poll
+        job_id = (start_resp or {}).get("job_id")
         if not job_id:
-            return {"status": "failed", "error": "VPS did not return job_id", "details": job}
+            # Try to read status if the VPS already built one
+            # or return a helpful error
+            return _fail("VPS did not return 'job_id' or 'output_url'.")
 
-        result = _poll_job(job_id, REQUEST_TIMEOUT)
-        status = (result.get("status") or "").lower()
+        t0 = time.time()
+        while True:
+            status = client.get_status(job_id)
+            state = (status or {}).get("status", "").lower()
 
-        if status == "completed":
-            url = _to_public_url(result)
-            if not url:
-                return {
-                    "status": "failed",
-                    "job_id": job_id,
-                    "error": "VPS completed but did not include a public URL or mappable path",
-                    "details": {k: result.get(k) for k in ("output_url","output_path","path","files")}
-                }
-            return {"status": "completed", "job_id": job_id, "output_url": url}
+            if state in ("completed", "succeeded", "success"):
+                out_url = status.get("output_url") or status.get("result_url") or status.get("url")
+                if not out_url:
+                    return _fail("VPS job completed but no 'output_url' in response.")
+                return _ok(out_url, meta={"job_id": job_id})
 
-        return {"status": status or "failed", "job_id": job_id, "error": result.get("error"), "details": result}
+            if state in ("failed", "error"):
+                return _fail(f"VPS job failed for job_id={job_id}: {json.dumps(status)}")
 
-    except requests.HTTPError as e:
-        body = None
-        code = None
-        try:
-            body, code = e.response.text, e.response.status_code
-        except Exception:
-            pass
-        return {"status": "failed", "error": "HTTP error talking to VPS", "status_code": code, "body": body}
+            if time.time() - t0 > POLL_TIMEOUT:
+                return _fail(f"Timed out waiting for VPS job_id={job_id} after {POLL_TIMEOUT}s.")
 
+            time.sleep(POLL_INTERVAL)
+
+    except VpsClientError as e:
+        return _fail(f"VPS error: {e}")
     except Exception as e:
-        return {"status": "failed", "error": str(e)}
+        return _fail(f"Unhandled error: {e}")
 
+# Start RunPod serverless worker
 runpod.serverless.start({"handler": handler})
-
-# rp_handler.py  — minimal shim so Runpod auto-discovers the worker
-from handler import handler as _handler
-import runpod
-
-runpod.serverless.start({"handler": _handler})
