@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "cloak_from_url",
+      "input": {
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Kylie_Jenner2_%28cropped%29.png"
+      },
+      "timeout": 180000
+    }
+  ],
+  "config": {
+    "cpuFlavor": "cpu5c-2-4",
+    "env": [
+      { "key": "VPS_BASE",  "value": "https://anon.donkeybee.com" },
+      { "key": "VPS_TOKEN", "value": "dev-local-secret-change-me" }
+    ],
+    "warmTime": 0,
+    "cooldownTime": 0
+  }
+}
