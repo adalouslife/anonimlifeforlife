@@ -7,3 +7,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY handler.py vps_client.py ./
 # Runpod injects entrypoint, no CMD needed.
+COPY handler.py vps_client.py rp_handler.py ./
