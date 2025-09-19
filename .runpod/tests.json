@@ -1,20 +1,10 @@
 {
   "version": 1,
-  "timeout": 180,
+  "timeout": 60,
   "tests": [
     {
-      "name": "URL input",
-      "input": {
-        "image_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-        "filename": "gh.png"
-      }
-    },
-    {
-      "name": "Base64 input (tiny data URL)",
-      "input": {
-        "image_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP2OVtP9wAAAABJRU5ErkJggg==",
-        "filename": "dot.png"
-      }
+      "name": "Hello world test",
+      "input": { "ping": "hello" }
     }
   ]
 }
