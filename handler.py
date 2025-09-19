@@ -1,79 +1,209 @@
-import base64, os, time, requests, runpod
+import base64
+import os
+import re
+import time
+from typing import Optional
 
-DEFAULT_VPS_BASE  = os.getenv("VPS_BASE", "https://anon.donkeybee.com").rstrip("/")
-DEFAULT_VPS_TOKEN = os.getenv("VPS_TOKEN", "dev-local-secret-change-me")
+import requests
+import runpod
 
-CONNECT_TIMEOUT = 10
-READ_TIMEOUT    = 180
-TOTAL_POLL_S    = 600
-POLL_INTERVAL   = 1.2
-RETRY_COUNT     = 3
-BACKOFF         = 1.5
+# -------------------------
+# Config
+# -------------------------
+VPS_BASE = os.environ.get("VPS_BASE", "").rstrip("/")
+VPS_TOKEN = os.environ.get("VPS_TOKEN", "")
+HTTP_TIMEOUT_S = int(os.environ.get("HTTP_TIMEOUT_S", "300"))  # total budget
+POLL_INTERVAL_S = float(os.environ.get("POLL_INTERVAL_S", "1.2"))
+UPLOAD_TIMEOUT = int(os.environ.get("UPLOAD_TIMEOUT", "60"))
+DOWNLOAD_TIMEOUT = int(os.environ.get("DOWNLOAD_TIMEOUT", "60"))
+QUERY_TIMEOUT = int(os.environ.get("QUERY_TIMEOUT", "15"))
+RUNPOD_TEST = os.environ.get("RUNPOD_TEST", "") == "1"
 
-def _req(method, url, **kw):
-    last = None
-    for i in range(1, RETRY_COUNT+1):
-        try:
-            return requests.request(method, url, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT), **kw)
-        except Exception as e:
-            last = e
-            if i < RETRY_COUNT:
-                time.sleep(BACKOFF**i)
-    raise last
+# Simple 1x1 PNG (black) for RUNPOD_TEST sanity
+_TINY_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8"
+    "/w8AAn8B9m3zUSwAAAAASUVORK5CYII="
+)
 
-def _download(url: str) -> bytes:
-    r = _req("GET", url, stream=True); r.raise_for_status(); return r.content
+UA_HEADERS = {
+    # Many CDNs block default python UA; use a harmless browser UA
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "*/*",
+}
 
-def _upload(img: bytes, base: str, token: str) -> str:
-    r = _req("POST", f"{base}/Upload", files={"file": ("image", img, "application/octet-stream")},
-             headers={"X-Auth-Token": token})
-    r.raise_for_status()
+session = requests.Session()
+
+
+def _require_env():
+    if RUNPOD_TEST:
+        return
+    if not VPS_BASE:
+        raise RuntimeError("VPS_BASE is not set.")
+    if not VPS_TOKEN:
+        raise RuntimeError("VPS_TOKEN is not set.")
+
+
+def _ext_from_content_type(ct: str) -> str:
+    if not ct:
+        return ".bin"
+    ct = ct.split(";")[0].strip().lower()
+    mapping = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }
+    return mapping.get(ct, ".bin")
+
+
+def fetch_bytes_from_url(url: str, per_request_timeout: int = 30) -> bytes:
+    # HEAD optional; some CDNs forbid it—go straight to GET with a sane UA
+    resp = session.get(url, headers=UA_HEADERS, timeout=per_request_timeout, stream=True)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"HTTP error: {resp.status_code} for url: {url}")
+    # respect reasonable max size? (optional)
+    content = resp.content
+    if not content:
+        raise RuntimeError("Downloaded empty body.")
+    return content
+
+
+def upload_bytes(img_bytes: bytes, filename: str = "image.jpg") -> str:
+    headers = {"X-Auth-Token": VPS_TOKEN}
+    files = {"file": (filename, img_bytes, "application/octet-stream")}
+    r = session.post(
+        f"{VPS_BASE}/Upload",
+        headers=headers,
+        files=files,
+        timeout=UPLOAD_TIMEOUT,
+    )
+    if r.status_code != 200:
+        raise RuntimeError(f"Upload failed: {r.status_code} {r.text}")
     image_id = r.text.strip()
-    if len(image_id) != 32 or any(c not in "0123456789abcdef" for c in image_id.lower()):
-        raise RuntimeError(f"Unexpected IMAGE_ID: {image_id!r}")
+    if not re.fullmatch(r"[0-9a-f]{32}", image_id):
+        raise RuntimeError(f"Unexpected Upload response: {image_id}")
     return image_id
 
-def _poll(base: str, token: str, image_id: str):
-    deadline = time.time() + TOTAL_POLL_S
-    headers = {"X-Auth-Token": token}
-    while True:
-        r = _req("GET", f"{base}/query/{image_id}", headers=headers); r.raise_for_status()
-        s = r.text.strip().upper()
-        if s == "READY": return
-        if time.time() > deadline: raise TimeoutError(f"poll timeout; last status={s}")
-        time.sleep(POLL_INTERVAL)
 
-def _download_result(base: str, token: str, image_id: str) -> bytes:
-    r = _req("GET", f"{base}/download/{image_id}", headers={"X-Auth-Token": token}, stream=True)
-    r.raise_for_status(); return r.content
+def poll_ready(image_id: str, deadline_ts: float) -> str:
+    headers = {"X-Auth-Token": VPS_TOKEN}
+    url = f"{VPS_BASE}/query/{image_id}"
+    while time.time() < deadline_ts:
+        r = session.get(url, headers=headers, timeout=QUERY_TIMEOUT)
+        if r.status_code == 404:
+            time.sleep(POLL_INTERVAL_S)
+            continue
+        if r.status_code != 200:
+            raise RuntimeError(f"Query failed: {r.status_code} {r.text}")
+        status = r.text.strip().upper()
+        if status in ("READY", "DONE"):
+            return status
+        if status in ("ERROR", "FAILED"):
+            raise RuntimeError("Processing failed upstream.")
+        time.sleep(POLL_INTERVAL_S)
+    raise TimeoutError("Timed out waiting for READY.")
 
-def handler(event):
-    try:
-        inp = event.get("input") or {}
-        vps_base  = (inp.get("vps_base") or DEFAULT_VPS_BASE).rstrip("/")
-        vps_token =  inp.get("vps_token") or DEFAULT_VPS_TOKEN
 
-        # get input bytes
-        if inp.get("image_b64"):
-            b64 = inp["image_b64"]
-            if b64.startswith("data:"): b64 = b64.split(",",1)[1]
-            try:
-                img = base64.b64decode(b64)
-            except Exception as e:
-                return {"status":"FAILED","error":f"Invalid image_b64: {e}"}
-        elif inp.get("image_url"):
-            try:
-                img = _download(inp["image_url"])
-            except Exception as e:
-                return {"status":"FAILED","error":f"HTTP error: {e}"}
-        else:
-            return {"status":"FAILED","error":"Provide 'image_url' or 'image_b64'."}
+def download_result(image_id: str) -> bytes:
+    headers = {"X-Auth-Token": VPS_TOKEN}
+    url = f"{VPS_BASE}/download/{image_id}"
+    r = session.get(url, headers=headers, timeout=DOWNLOAD_TIMEOUT)
+    if r.status_code != 200:
+        raise RuntimeError(f"Download failed: {r.status_code} {r.text}")
+    return r.content
 
-        image_id = _upload(img, vps_base, vps_token)
-        _poll(vps_base, vps_token, image_id)
-        out = _download_result(vps_base, vps_token, image_id)
-        return {"status":"COMPLETED","image_b64": base64.b64encode(out).decode(),"image_id":image_id}
-    except Exception as e:
-        return {"status":"FAILED","error":f"Unhandled: {e}"}
 
-runpod.serverless.start({"handler": handler})
+def to_b64(data: bytes, prefix: Optional[str] = None) -> str:
+    b64 = base64.b64encode(data).decode("utf-8")
+    if prefix:
+        return f"{prefix},{b64}"
+    return b64
+
+
+def _tiny_ok():
+    # For RUNPOD_TEST=1 fast “Testing” phase
+    return {"image_b64": _TINY_PNG_B64, "meta": {"test": True}}
+
+
+def handler(job):
+    """
+    Expected inputs:
+      {
+        "image_url": "https://…",        # OR
+        "image_b64": "data:image/png;base64,...." | "iVBORw0…",
+        "timeout_s": 300                 # optional override
+      }
+    Output:
+      { "image_b64": "<base64>", "image_id": "...", "meta": {...} }
+    """
+    _require_env()
+
+    ipt = job.get("input", {}) or {}
+    timeout_s = int(ipt.get("timeout_s", HTTP_TIMEOUT_S))
+
+    if RUNPOD_TEST:
+        return _tiny_ok()
+
+    img_bytes = None
+    filename = "image.jpg"
+
+    if "image_url" in ipt and ipt["image_url"]:
+        url = ipt["image_url"]
+        img_bytes = fetch_bytes_from_url(url, per_request_timeout=min(60, timeout_s))
+        # attempt to guess extension from HEAD or URL (best-effort)
+        try:
+            head = session.head(url, headers=UA_HEADERS, timeout=10, allow_redirects=True)
+            ext = _ext_from_content_type(head.headers.get("content-type", ""))
+        except Exception:
+            # fallback to URL suffix
+            m = re.search(r"\.(png|jpg|jpeg|webp|gif)(\?|$)", url, re.I)
+            ext = f".{m.group(1).lower()}" if m else ".jpg"
+        filename = f"image{ext}"
+    elif "image_b64" in ipt and ipt["image_b64"]:
+        b64 = ipt["image_b64"]
+        if "," in b64:
+            # strip data URI prefix if present
+            b64 = b64.split(",", 1)[1]
+        try:
+            img_bytes = base64.b64decode(b64, validate=True)
+        except Exception as e:
+            raise RuntimeError(f"Invalid base64: {e}")
+        filename = "image.png"
+    else:
+        raise RuntimeError("Provide either 'image_url' or 'image_b64'")
+
+    start_ts = time.time()
+    deadline_ts = start_ts + timeout_s
+
+    # 1) Upload to VPS/Fawkes
+    image_id = upload_bytes(img_bytes, filename=filename)
+
+    # 2) Poll until READY (or timeout)
+    poll_ready(image_id, deadline_ts)
+
+    # 3) Download cloaked image
+    result_bytes = download_result(image_id)
+
+    # 4) Return base64 (no data: prefix to keep payload small/clean)
+    return {
+        "image_b64": to_b64(result_bytes),
+        "image_id": image_id,
+        "meta": {
+            "elapsed_s": round(time.time() - start_ts, 3),
+            "vps_base": VPS_BASE,
+        },
+    }
+
+
+# Entrypoint for RunPod
+runpod.serverless.start(
+    {
+        "handler": handler,
+        # request/response validation can be added later if you want
+    }
+)
