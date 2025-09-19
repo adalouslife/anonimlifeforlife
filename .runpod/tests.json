@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "smoke-face-url",
+      "name": "smoke_face_image",
       "input": {
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Albert_Einstein_Head_%28cropped%29.jpg"
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/5/55/Barack_Obama_2012.jpg"
       },
-      "timeout": 120000
+      "timeout": 15000
     }
   ]
 }
