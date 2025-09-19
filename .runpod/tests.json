@@ -1,14 +1,14 @@
 {
-  "tests": [
+  "testCases": [
     {
-      "name": "fast_ping",
-      "input": { "ping": true, "echo": "hub-test" },
-      "timeout": 10000
+      "name": "Self Test",
+      "input": {
+        "self_test": true
+      },
+      "expected": {
+        "ok": true,
+        "image_id": "self-test"
+      }
     }
-  ],
-  "config": {
-    "gpuCount": 0,
-    "env": [],
-    "allowedCudaVersions": []
-  }
+  ]
 }
