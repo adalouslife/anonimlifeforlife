@@ -2,105 +2,96 @@
 import base64
 import io
 import os
-import uuid
-from pathlib import Path
-from typing import Dict, Any, Optional
-
+import time
+from typing import Any, Dict, Optional, Tuple
 import requests
-from PIL import Image
 import runpod
 
-from logic import anonymize
+from vps_client import VPSClient, VPSJobError
 
-# --- Config via env ---
-OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "/app/uploads"))
-OUTPUT_BASE_URL = os.getenv("OUTPUT_BASE_URL", "https://anon.donkeybee.com").rstrip("/")
-OUTPUT_PUBLIC_PREFIX = "/" + os.getenv("OUTPUT_PUBLIC_PREFIX", "/download").strip("/")
+# ---- Config via env ----
+VPS_BASE_URL = os.environ.get("VPS_BASE_URL", "https://anon.donkeybee.com")
+VPS_API_KEY  = os.environ.get("VPS_API_KEY", "")  # optional
+# Query polling
+POLL_INTERVAL_SEC = float(os.environ.get("POLL_INTERVAL_SEC", "1.5"))
+POLL_TIMEOUT_SEC  = float(os.environ.get("POLL_TIMEOUT_SEC", "300"))
 
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+vps = VPSClient(
+    base_url=VPS_BASE_URL,
+    api_key=VPS_API_KEY,
+    user_agent="runpod-bridge/1.0"
+)
 
-
-def _save_from_url(url: str, dst_path: Path) -> Path:
-    r = requests.get(url, timeout=30)
+def _download_url_to_bytes(url: str) -> bytes:
+    """Fetch an image from a remote URL into memory."""
+    r = requests.get(url, timeout=60)
     r.raise_for_status()
-    # Trust content-type lightly; open with PIL to normalize & validate.
-    img = Image.open(io.BytesIO(r.content)).convert("RGB")
-    img.save(dst_path, format="PNG", compress_level=6)
-    return dst_path
+    return r.content
 
+def _decode_base64_image(b64: str) -> bytes:
+    try:
+        return base64.b64decode(b64, validate=True)
+    except Exception as e:
+        raise ValueError(f"Invalid base64 image: {e}")
 
-def _save_from_base64(b64_str: str, dst_path: Path) -> Path:
-    # accept both data URLs and raw base64
-    if b64_str.startswith("data:"):
-        b64_str = b64_str.split(",", 1)[1]
-    raw = base64.b64decode(b64_str)
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
-    img.save(dst_path, format="PNG", compress_level=6)
-    return dst_path
+def _extract_input(event: Dict[str, Any]) -> Tuple[bytes, Optional[str]]:
+    """
+    Accepts one of:
+      event['input']['image_url']   -> fetch
+      event['input']['image_b64']   -> decode
+    Returns (image_bytes, original_filename or None)
+    """
+    inp = event.get("input") or {}
+    url = inp.get("image_url")
+    b64 = inp.get("image_b64")
 
+    if url:
+        return _download_url_to_bytes(url), os.path.basename(url.split("?")[0]) or None
+    if b64:
+        return _decode_base64_image(b64), None
 
-def _build_public_url(filename: str) -> str:
-    # final URL: {OUTPUT_BASE_URL}{OUTPUT_PUBLIC_PREFIX}/{filename}
-    return f"{OUTPUT_BASE_URL}{OUTPUT_PUBLIC_PREFIX}/{filename}"
-
+    raise ValueError("Provide 'image_url' or 'image_b64' in input.")
 
 def handler(event: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Expected input:
-    {
-      "input": {
-        "image_url": "https://...",
-        // or
-        "image_base64": "data:image/png;base64,...",
-        "jobId": "optional-passthrough",
-        "filename": "optional-base-name.png"
-      }
-    }
+    Runpod handler contract: return a JSON-serializable dict.
     """
     try:
-        data = (event or {}).get("input") or {}
-        image_url: Optional[str] = data.get("image_url")
-        image_base64: Optional[str] = data.get("image_base64")
-        job_id: Optional[str] = data.get("jobId")
-        requested_name: Optional[str] = data.get("filename")
+        image_bytes, maybe_name = _extract_input(event)
 
-        if not image_url and not image_base64:
-            return {
-                "status": "FAILED",
-                "error": "Provide either 'image_url' or 'image_base64' in input."
-            }
+        # 1) Upload to VPS
+        upload_id = vps.upload(image_bytes, filename=maybe_name or "upload.jpg")
 
-        # Generate stable filename
-        stem = (Path(requested_name).stem if requested_name else str(uuid.uuid4()))
-        in_name = f"{stem}_in.png"
-        out_name = f"{stem}_out.png"
-        in_path = OUTPUT_DIR / in_name
-        out_path = OUTPUT_DIR / out_name
+        # 2) Poll query until done / failed / timeout
+        deadline = time.time() + POLL_TIMEOUT_SEC
+        last_status = None
+        while time.time() < deadline:
+            status, filename, message = vps.query(upload_id)
 
-        # Save input to disk
-        if image_url:
-            _save_from_url(image_url, in_path)
-        else:
-            _save_from_base64(image_base64, in_path)
+            if status == "done" and filename:
+                # 3) Build public URL for client
+                output_url = vps.download_url(filename)
+                return {
+                    "status": "succeeded",
+                    "id": upload_id,
+                    "output_url": output_url,
+                }
 
-        # Run anonymization pipeline
-        anonymize(str(in_path), str(out_path))
+            if status in {"failed", "error"}:
+                raise VPSJobError(f"VPS reported failure: {message or 'unknown error'}")
 
-        # Build public URL for the output
-        output_url = _build_public_url(out_name)
+            last_status = status
+            time.sleep(POLL_INTERVAL_SEC)
 
-        return {
-            "status": "DONE",
-            "output_url": output_url,
-            "jobId": job_id,
-            "input_saved": _build_public_url(in_name)  # handy for debugging (keep/remove as you like)
-        }
+        # timeout
+        raise TimeoutError(f"Timed out waiting for VPS job (last_status={last_status}).")
 
-    except requests.RequestException as rexc:
-        return {"status": "FAILED", "error": f"Download error: {str(rexc)}"}
-    except Exception as exc:
-        return {"status": "FAILED", "error": f"Unhandled error: {str(exc)}"}
+    except VPSJobError as e:
+        return {"status": "failed", "error": str(e)}
+    except requests.HTTPError as e:
+        return {"status": "failed", "error": f"HTTP error: {e.response.status_code} {e.response.text[:200]}"}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
 
-
-# Required entrypoint for Runpod Serverless
+# Runpod boot
 runpod.serverless.start({"handler": handler})
