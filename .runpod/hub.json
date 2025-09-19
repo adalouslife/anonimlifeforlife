@@ -1,43 +1,47 @@
 {
-  "title": "Fawkes Face Cloaker (CPU)",
-  "description": "Bridge that sends an image to your VPS-hosted Fawkes API, waits for cloaking, and returns the anonymized image as base64.",
-  "type": "serverless",
-  "category": "image",
-  "config": {
-    "runsOn": "CPU",
-    "containerDiskInGb": 6,
-    "cpuFlavor": "cpu5c-2-4",
-    "env": [
-      {
-        "key": "VPS_BASE",
-        "input": {
-          "name": "Fawkes API Base URL",
-          "type": "string",
-          "description": "Public HTTPS base URL for your Fawkes API.",
-          "default": "https://anon.donkeybee.com",
-          "advanced": false
-        }
-      },
-      {
-        "key": "VPS_TOKEN",
-        "input": {
-          "name": "Fawkes API Auth Token",
-          "type": "string",
-          "description": "X-Auth-Token header for Fawkes API.",
-          "default": "dev-local-secret-change-me",
-          "advanced": false,
-          "secret": true
-        }
-      }
-    ],
-    "presets": [
-      {
-        "name": "Default",
-        "defaults": {
-          "VPS_BASE": "https://anon.donkeybee.com",
-          "VPS_TOKEN": "dev-local-secret-change-me"
-        }
-      }
-    ]
-  }
+  "name": "anonimlifeforlife",
+  "version": "1.0.0",
+  "short_description": "Fawkes anonymization proxy worker. Accepts image_url or base64, calls your VPS, returns cloaked image as base64.",
+  "long_description": "Serverless worker that fetches an image (URL or base64), uploads to your Fawkes VPS (FastAPI), polls until ready, and returns the anonymized image as base64. Designed for CPU workers.",
+  "image": {
+    "type": "dockerfile",
+    "file": "Dockerfile"
+  },
+  "handler": {
+    "entrypoint": "handler.handler",
+    "timeout": 300
+  },
+  "resources": {
+    "gpu": false,
+    "memory": "1Gi",
+    "cpu": "1"
+  },
+  "env": [
+    {
+      "name": "VPS_BASE",
+      "description": "Base URL of your VPS Fawkes API (e.g., https://anon.donkeybee.com)",
+      "required": true,
+      "secret": false
+    },
+    {
+      "name": "VPS_TOKEN",
+      "description": "X-Auth-Token for your VPS app",
+      "required": true,
+      "secret": true
+    },
+    {
+      "name": "HTTP_TIMEOUT",
+      "description": "Per-request HTTP timeout (seconds)",
+      "required": false,
+      "default": "60",
+      "secret": false
+    },
+    {
+      "name": "POLL_MAX_SECONDS",
+      "description": "Max seconds to wait for result",
+      "required": false,
+      "default": "180",
+      "secret": false
+    }
+  ]
 }
