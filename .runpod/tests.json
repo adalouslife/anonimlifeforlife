@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "smoke-face-url",
+      "input": {
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Albert_Einstein_Head_%28cropped%29.jpg"
+      },
+      "timeout": 120000
+    }
+  ]
+}
