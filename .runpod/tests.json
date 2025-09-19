@@ -7,8 +7,8 @@
       },
       "assert": {
         "keys_present": ["status", "output_url"],
-        "status_equals": "completed",
-        "output_url_is_url": true
+        "equals": { "status": "completed" },
+        "is_url": ["output_url"]
       }
     }
   ]
