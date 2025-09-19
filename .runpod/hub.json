@@ -1,9 +1,0 @@
-{
-  "name": "anonimlifeforlife",
-  "short_description": "Serverless proxy to VPS Fawkes (upload → poll → download → return b64+URL).",
-  "image": { "type": "dockerfile", "file": "Dockerfile" },
-  "handler": "handler.handler",
-  "timeout": 300,
-  "env": ["VPS_BASE_URL", "VPS_AUTH_TOKEN"],
-  "gpu": "NONE"
-}
