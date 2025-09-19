@@ -1,19 +1,15 @@
 {
   "tests": [
     {
-      "name": "offline-echo",
+      "name": "smoke",
       "input": {
-        "image_urls": ["https://picsum.photos/seed/runpod/128/128"],
-        "webhook_url": null
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"
       },
-      "timeout": 15000
+      "assert": {
+        "keys_present": ["status", "output_url"],
+        "status_equals": "completed",
+        "output_url_is_url": true
+      }
     }
-  ],
-  "config": {
-    "cpuFlavor": "Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz",
-    "env": [
-      { "key": "ALLOW_OFFLINE", "value": "true" },
-      { "key": "RETURN_BASE_URL", "value": "https://example-cdn.test/anon/" }
-    ]
-  }
+  ]
 }
