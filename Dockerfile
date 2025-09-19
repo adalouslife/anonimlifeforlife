@@ -1,22 +1,20 @@
 FROM python:3.10-slim
 
-# Set working directory
 WORKDIR /app
 
-# System deps
+# System deps kept minimal to reduce build flakiness
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl wget build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy repo
 COPY . /app
 
-# Install Python deps
+# Python deps
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+ && pip install --no-cache-dir -r requirements.txt
 
-# Create uploads dir
+# A predictable place if you later want local temp files
 RUN mkdir -p /app/uploads
 
-# Default command
+# Start the RunPod serverless handler
 CMD ["python", "handler.py"]
