@@ -1,16 +1,24 @@
 {
   "tests": [
     {
-      "name": "smoke",
+      "name": "smoke-image",
       "input": {
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e9/Official_portrait_of_Barack_Obama.jpg"
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png"
       },
-      "timeout": 90,
-      "config": {
-        "env": [
-          { "key": "DRY_RUN", "value": "true" }
-        ]
-      }
+      "assert": {
+        "keys_present": ["status"],
+        "status_equals": "completed"
+      },
+      "timeout": 120
+    },
+    {
+      "name": "ping",
+      "input": { "mode": "ping" },
+      "assert": {
+        "keys_present": ["status"],
+        "status_equals": "completed"
+      },
+      "timeout": 60
     }
   ]
 }
