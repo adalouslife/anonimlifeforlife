@@ -1,12 +1,9 @@
 {
-  "version": 1,
-  "timeout": 120,
   "tests": [
     {
-      "name": "Anonymize test image",
-      "input": {
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Kylie_Jenner2_%28cropped%29.png"
-      }
+      "name": "ping",
+      "input": { "ping": true },
+      "expected": { "pong": true }
     }
   ]
 }
