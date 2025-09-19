@@ -1,32 +1,92 @@
 {
-  "name": "fawkes-bridge",
-  "version": "1.0.0",
-  "short_description": "Bridge worker that sends images to a VPS running Fawkes anonymizer and returns the cloaked result URL.",
-  "long_description": "This worker accepts an input image (via URL or base64). It forwards the image to a dedicated VPS running Fawkes, polls until processing is complete, and returns the public download URL of the anonymized image.",
-  "tags": ["fawkes", "anonymization", "bridge", "vps"],
-  "repo_url": "https://github.com/adalouslife/anonimlifeforlife",
-  "license": "MIT",
-  "entrypoint": "handler.py",
-  "api": {
-    "input": {
-      "type": "object",
-      "properties": {
-        "image_url": { "type": "string", "description": "Publicly accessible URL to an image" },
-        "image_b64": { "type": "string", "description": "Image data encoded as base64" }
+  "title": "Fawkes Anonymizer Gateway",
+  "description": "Serverless bridge that accepts image URLs, forwards them to your VPS Fawkes service, and returns a public output URL.",
+  "type": "serverless",
+  "category": "image",
+  "config": {
+    "runsOn": "CPU",
+    "cpuFlavor": "Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz",
+    "containerDiskInGb": 10,
+    "env": [
+      {
+        "key": "VPS_HOST",
+        "input": {
+          "name": "VPS Host",
+          "type": "string",
+          "description": "DNS name or IP of your VPS running the Fawkes API"
+        }
       },
-      "oneOf": [
-        { "required": ["image_url"] },
-        { "required": ["image_b64"] }
-      ]
-    },
-    "output": {
-      "type": "object",
-      "properties": {
-        "status": { "type": "string" },
-        "output_url": { "type": "string", "description": "Direct URL to anonymized image hosted on VPS" },
-        "error": { "type": "string" }
+      {
+        "key": "VPS_PORT",
+        "input": {
+          "name": "VPS Port",
+          "type": "number",
+          "description": "Port for your VPS API",
+          "default": 443
+        }
       },
-      "required": ["status"]
-    }
+      {
+        "key": "VPS_SCHEME",
+        "input": {
+          "name": "VPS Scheme",
+          "type": "string",
+          "description": "http or https",
+          "options": [
+            { "label": "https", "value": "https" },
+            { "label": "http", "value": "http" }
+          ],
+          "default": "https",
+          "advanced": true
+        }
+      },
+      {
+        "key": "VPS_API_KEY",
+        "input": {
+          "name": "VPS API Key",
+          "type": "string",
+          "description": "Bearer token (or key) your VPS expects"
+        }
+      },
+      {
+        "key": "RETURN_BASE_URL",
+        "input": {
+          "name": "Return base URL",
+          "type": "string",
+          "description": "CDN/base URL where anonymized outputs are hosted (e.g. https://cdn.example.com/anon/)"
+        }
+      },
+      {
+        "key": "REQUEST_TIMEOUT_S",
+        "input": {
+          "name": "VPS request timeout (seconds)",
+          "type": "number",
+          "description": "HTTP timeout for calls to the VPS",
+          "default": 25,
+          "min": 5,
+          "max": 120,
+          "advanced": true
+        }
+      },
+      {
+        "key": "ALLOW_OFFLINE",
+        "input": {
+          "type": "boolean",
+          "name": "Allow offline test mode",
+          "description": "If enabled, worker short-circuits VPS calls and returns a fake output URL so Hub tests pass without hitting your VPS.",
+          "default": true,
+          "trueValue": "true",
+          "falseValue": "false",
+          "advanced": true
+        }
+      }
+    ],
+    "presets": [
+      {
+        "name": "Default",
+        "defaults": {
+          "ALLOW_OFFLINE": true
+        }
+      }
+    ]
   }
 }
