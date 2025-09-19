@@ -1,18 +1,18 @@
 {
   "name": "anonimlifeforlife",
   "version": "1.0.0",
-  "short_description": "Minimal worker test",
+  "short_description": "Face anonymization worker using Fawkes",
   "image": {
     "type": "dockerfile",
     "file": "Dockerfile"
   },
   "handler": {
     "entrypoint": "handler.handler",
-    "timeout": 120
+    "timeout": 300
   },
   "resources": {
     "gpu": false,
-    "cpu": "1",
-    "memory": "1Gi"
+    "cpu": "2",
+    "memory": "4Gi"
   }
 }
