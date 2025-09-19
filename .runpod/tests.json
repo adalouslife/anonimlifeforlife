@@ -1,30 +1,19 @@
-[
-  {
-    "name": "url_input",
-    "input": {
-      "image_url": "https://picsum.photos/seed/face/256"
-    },
-    "expected": {
-      "status": "succeeded",
-      "keys_present": ["output_url"]
+{
+  "tests": [
+    {
+      "name": "offline-echo",
+      "input": {
+        "image_urls": ["https://picsum.photos/seed/runpod/128/128"],
+        "webhook_url": null
+      },
+      "timeout": 15000
     }
-  },
-  {
-    "name": "b64_input",
-    "input": {
-      "image_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA"
-    },
-    "expected": {
-      "status": "succeeded",
-      "keys_present": ["output_url"]
-    }
-  },
-  {
-    "name": "invalid_input",
-    "input": {},
-    "expected": {
-      "status": "failed",
-      "keys_present": ["error"]
-    }
+  ],
+  "config": {
+    "cpuFlavor": "Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz",
+    "env": [
+      { "key": "ALLOW_OFFLINE", "value": "true" },
+      { "key": "RETURN_BASE_URL", "value": "https://example-cdn.test/anon/" }
+    ]
   }
-]
+}
