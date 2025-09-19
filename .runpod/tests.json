@@ -1,9 +1,30 @@
-{
-  "tests": [
-    {
-      "name": "ping",
-      "input": { "ping": true },
-      "expected": { "output.pong": true }
+[
+  {
+    "name": "url_input",
+    "input": {
+      "image_url": "https://picsum.photos/seed/face/256"
+    },
+    "expected": {
+      "status": "succeeded",
+      "keys_present": ["output_url"]
     }
-  ]
-}
+  },
+  {
+    "name": "b64_input",
+    "input": {
+      "image_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA"
+    },
+    "expected": {
+      "status": "succeeded",
+      "keys_present": ["output_url"]
+    }
+  },
+  {
+    "name": "invalid_input",
+    "input": {},
+    "expected": {
+      "status": "failed",
+      "keys_present": ["error"]
+    }
+  }
+]
