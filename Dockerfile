@@ -1,31 +1,22 @@
-# Use a small, stable Python base
+# Small, fast, no build tools needed
 FROM python:3.10-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    # Where we write final images inside the container
-    OUTPUT_DIR=/app/uploads \
-    # Your public base URL (domain) that serves files from OUTPUT_DIR
-    OUTPUT_BASE_URL=https://anon.donkeybee.com \
-    # Public path prefix mapped by your reverse-proxy/Caddy to /app/uploads
-    OUTPUT_PUBLIC_PREFIX=/download
+# Prevents Python from buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install CA certificates + curl (handy for debugging)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# System packages: add-only what’s necessary for Pillow wheels & runtime
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
+# Copy deps first for better layer caching
 COPY requirements.txt .
-RUN python -m pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# App code
-COPY handler.py logic.py ./
+# Copy source
+COPY handler.py vps_client.py ./
 
-# Writable output directory in the image
-RUN mkdir -p ${OUTPUT_DIR}
-
-# Runpod serverless will execute the module; no webserver needed
-CMD ["python", "handler.py"]
+# Runpod looks for the handler automatically when we start the serverless runtime.
+# No CMD needed—Runpod injects the entrypoint. Keeping default.
