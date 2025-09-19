@@ -1,0 +1,43 @@
+{
+  "title": "Fawkes Face Cloaker (CPU)",
+  "description": "Bridge that sends an image to your VPS-hosted Fawkes API, waits for cloaking, and returns the anonymized image as base64.",
+  "type": "serverless",
+  "category": "image",
+  "config": {
+    "runsOn": "CPU",
+    "containerDiskInGb": 6,
+    "cpuFlavor": "cpu5c-2-4",
+    "env": [
+      {
+        "key": "VPS_BASE",
+        "input": {
+          "name": "Fawkes API Base URL",
+          "type": "string",
+          "description": "Public HTTPS base URL for your Fawkes API.",
+          "default": "https://anon.donkeybee.com",
+          "advanced": false
+        }
+      },
+      {
+        "key": "VPS_TOKEN",
+        "input": {
+          "name": "Fawkes API Auth Token",
+          "type": "string",
+          "description": "X-Auth-Token header for Fawkes API.",
+          "default": "dev-local-secret-change-me",
+          "advanced": false,
+          "secret": true
+        }
+      }
+    ],
+    "presets": [
+      {
+        "name": "Default",
+        "defaults": {
+          "VPS_BASE": "https://anon.donkeybee.com",
+          "VPS_TOKEN": "dev-local-secret-change-me"
+        }
+      }
+    ]
+  }
+}
