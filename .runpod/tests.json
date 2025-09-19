@@ -3,8 +3,10 @@
   "timeout": 60,
   "tests": [
     {
-      "name": "Hello world test",
-      "input": { "ping": "hello" }
+      "name": "Ping test",
+      "input": {
+        "ping": "hello"
+      }
     }
   ]
 }
