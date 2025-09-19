@@ -152,3 +152,9 @@ def handler(event):
         return {"status": "failed", "error": str(e)}
 
 runpod.serverless.start({"handler": handler})
+
+# rp_handler.py  — minimal shim so Runpod auto-discovers the worker
+from handler import handler as _handler
+import runpod
+
+runpod.serverless.start({"handler": _handler})
