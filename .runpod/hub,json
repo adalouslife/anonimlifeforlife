@@ -1,0 +1,32 @@
+{
+  "name": "fawkes-bridge",
+  "version": "1.0.0",
+  "short_description": "Bridge worker that sends images to a VPS running Fawkes anonymizer and returns the cloaked result URL.",
+  "long_description": "This worker accepts an input image (via URL or base64). It forwards the image to a dedicated VPS running Fawkes, polls until processing is complete, and returns the public download URL of the anonymized image.",
+  "tags": ["fawkes", "anonymization", "bridge", "vps"],
+  "repo_url": "https://github.com/adalouslife/anonimlifeforlife",
+  "license": "MIT",
+  "entrypoint": "handler.py",
+  "api": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "image_url": { "type": "string", "description": "Publicly accessible URL to an image" },
+        "image_b64": { "type": "string", "description": "Image data encoded as base64" }
+      },
+      "oneOf": [
+        { "required": ["image_url"] },
+        { "required": ["image_b64"] }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "output_url": { "type": "string", "description": "Direct URL to anonymized image hosted on VPS" },
+        "error": { "type": "string" }
+      },
+      "required": ["status"]
+    }
+  }
+}
