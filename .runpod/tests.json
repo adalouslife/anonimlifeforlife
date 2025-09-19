@@ -1,9 +1,9 @@
 {
   "tests": [
     {
-      "name": "smoke",
+      "name": "smoke_face",
       "input": {
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg"
       },
       "assert": {
         "keys_present": ["status", "output_url"],
