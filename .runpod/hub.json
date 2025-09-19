@@ -1,12 +1,53 @@
 {
-  "title": "AnonimLife Face Cloaker (Fawkes, CPU)",
-  "description": "Serverless endpoint that cloaks faces in images using Fawkes and returns a processed image URL.",
+  "title": "AnonimLife Fawkes Proxy (CPU)",
+  "description": "Accepts an image URL, optionally proxies to your VPS Fawkes service, and returns an output URL.",
   "type": "serverless",
   "category": "image",
   "config": {
     "runsOn": "CPU",
     "containerDiskInGb": 10,
-    "cpuFlavor": "Intel Core i9-13900K",
-    "env": []
+    "env": [
+      {
+        "key": "VPS_PROXY",
+        "input": {
+          "type": "boolean",
+          "name": "Send work to VPS",
+          "description": "If enabled, jobs will be forwarded to your VPS endpoint.",
+          "default": false,
+          "trueValue": "true",
+          "falseValue": "false"
+        }
+      },
+      {
+        "key": "VPS_BASE_URL",
+        "input": {
+          "type": "string",
+          "name": "VPS base URL",
+          "description": "e.g. https://anon.donkeybee.com",
+          "default": ""
+        }
+      },
+      {
+        "key": "VPS_ENDPOINT_PATH",
+        "input": {
+          "type": "string",
+          "name": "VPS endpoint path",
+          "description": "Path that accepts POST { image_url } and returns { output_url }",
+          "default": "/api/fawkes/cloak"
+        }
+      }
+    ],
+    "presets": {
+      "Default": [
+        { "key": "VPS_PROXY", "value": "false" },
+        { "key": "VPS_BASE_URL", "value": "" },
+        { "key": "VPS_ENDPOINT_PATH", "value": "/api/fawkes/cloak" }
+      ],
+      "Forward to anon.donkeybee.com": [
+        { "key": "VPS_PROXY", "value": "true" },
+        { "key": "VPS_BASE_URL", "value": "https://anon.donkeybee.com" },
+        { "key": "VPS_ENDPOINT_PATH", "value": "/api/fawkes/cloak" }
+      ]
+    }
   }
 }
