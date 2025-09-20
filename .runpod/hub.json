@@ -8,11 +8,22 @@
     "containerDiskInGb": 10,
     "env": [
       {
+        "key": "RUNPOD_OFFLINE",
+        "input": {
+          "type": "boolean",
+          "name": "Offline (no external HTTP)",
+          "description": "Leave ON for Hub tests. Turn OFF when you want real network/VPS calls.",
+          "default": true,
+          "trueValue": "true",
+          "falseValue": "false"
+        }
+      },
+      {
         "key": "VPS_PROXY",
         "input": {
           "type": "boolean",
           "name": "Send work to VPS",
-          "description": "If enabled, jobs will be forwarded to your VPS endpoint.",
+          "description": "If enabled (and Offline is OFF), jobs are forwarded to your VPS endpoint.",
           "default": false,
           "trueValue": "true",
           "falseValue": "false"
@@ -38,12 +49,14 @@
       }
     ],
     "presets": {
-      "Default": [
+      "Default (Hub Test Safe)": [
+        { "key": "RUNPOD_OFFLINE", "value": "true" },
         { "key": "VPS_PROXY", "value": "false" },
         { "key": "VPS_BASE_URL", "value": "" },
         { "key": "VPS_ENDPOINT_PATH", "value": "/api/fawkes/cloak" }
       ],
       "Forward to anon.donkeybee.com": [
+        { "key": "RUNPOD_OFFLINE", "value": "false" },
         { "key": "VPS_PROXY", "value": "true" },
         { "key": "VPS_BASE_URL", "value": "https://anon.donkeybee.com" },
         { "key": "VPS_ENDPOINT_PATH", "value": "/api/fawkes/cloak" }
