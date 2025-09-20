@@ -1,15 +1,41 @@
+# vps_client.py
+import os
 import requests
 
+# Read timeout from env; default to 660s (~11 minutes)
+_DEFAULT_TIMEOUT = int(os.getenv("VPS_TIMEOUT_SECONDS", "660"))
 
-def process_via_vps(base_url: str, endpoint_path: str, image_url: str, timeout: int = 20) -> dict:
+class VPSClientError(Exception):
+    pass
+
+def process_via_vps(base_url: str,
+                    endpoint_path: str,
+                    image_url: str,
+                    timeout: int = _DEFAULT_TIMEOUT):
     """
-    POSTs { image_url } to your VPS, expecting { output_url } back.
-    Raises on HTTP errors; returns dict on success.
+    Calls the VPS adapter endpoint synchronously:
+      POST {base_url}{endpoint_path}
+      JSON: {"image_url": "<url>"}
+
+    Expects 200 JSON like: {"output_url": "..."}
+    Returns that JSON as dict.
+    Raises VPSClientError on HTTP errors.
     """
-    url = base_url.rstrip("/") + "/" + endpoint_path.lstrip("/")
-    r = requests.post(url, json={"image_url": image_url}, timeout=timeout)
-    r.raise_for_status()
-    data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
-    if not isinstance(data, dict):
-        data = {"output_url": image_url}
-    return data
+    url = f"{base_url.rstrip('/')}{endpoint_path}"
+    resp = None
+    try:
+        resp = requests.post(url, json={"image_url": image_url}, timeout=timeout)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        body = ""
+        try:
+            body = resp.text[:300] if resp is not None else ""
+        except Exception:
+            pass
+        raise VPSClientError(f"VPS call failed: {e} :: {body}") from e
+
+    try:
+        return resp.json()
+    except ValueError:
+        # Fallback if VPS ever returned non-JSON
+        return {"output_url": image_url}
