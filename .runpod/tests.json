@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "name": "Basic container spin-up",
+      "name": "Ping handler",
       "input": { "ping": "hello" },
       "expected": { "ok": true }
     }
