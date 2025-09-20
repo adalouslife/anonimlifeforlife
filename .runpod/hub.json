@@ -1,18 +1,18 @@
 {
-  "name": "AnonimLifeFawkes",
-  "description": "Anonymizes user-uploaded images using Fawkes. Send image_url or image_b64, receive cloaked image.",
-  "examples": [
-    {
-      "name": "Ping example",
-      "request": {
-        "input": {
-          "ping": "hello"
-        }
-      },
-      "expected": {
-        "status": "ok"
-      }
-    }
+  "version": "1.0.0",
+  "entrypoint": "app.py",
+  "runtime": "python3.10",
+  "tests": ".runpod/tests.json",
+  "env": [
+    "AUTH_TOKEN",
+    "ADAPTER_SYNC",
+    "VPS_BASE_URL",
+    "VPS_ENDPOINT_PATH",
+    "VPS_TIMEOUT_SECONDS",
+    "VPS_PROXY"
   ],
-  "timeout": 60
+  "resources": {
+    "cpu": 1,
+    "memory": "2Gi"
+  }
 }
