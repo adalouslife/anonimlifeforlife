@@ -1,16 +1,22 @@
-FROM python:3.10-slim
+# Use RunPod's serverless Python base image
+FROM runpod/serverless:py3.10
 
-# System deps (kept minimal)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl && \
-    rm -rf /var/lib/apt/lists/*
+# Faster, quieter pip
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install deps first (better cache)
+COPY requirements.txt /app/requirements.txt
+RUN pip install -r /app/requirements.txt
 
-COPY handler.py vps_client.py ./
+# Bring in the worker code
+COPY . /app
 
-# Runpod Serverless will start the poller via handler.py
+# Healthcheck to surface startup issues quickly
+HEALTHCHECK --interval=30s --timeout=5s \
+  CMD python -c "import runpod; import handler" || exit 1
+
+# Start the serverless handler (poller)
 CMD ["python", "-u", "handler.py"]
