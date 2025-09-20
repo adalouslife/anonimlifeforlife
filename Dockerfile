@@ -1,22 +1,17 @@
-# Dockerfile (Serverless worker)
+# Dockerfile
 FROM python:3.10-slim
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONUNBUFFERED=1
-
 WORKDIR /app
-
-# Install deps first (better cache)
 COPY requirements.txt /app/requirements.txt
+
+# Speed + reliability
 RUN python -m pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
-# Bring in worker code
 COPY . /app
 
-# Optional healthcheck (safe)
-HEALTHCHECK --interval=30s --timeout=5s \
-  CMD python -c "import handler" || exit 1
+# Ensure logs are flushed promptly (important for tests)
+ENV PYTHONUNBUFFERED=1
 
-# Start RunPod poller/handler
-CMD ["python", "-u", "handler.py"]
+# 👉 IMPORTANT: start the RunPod serverless worker, not FastAPI
+CMD ["python", "worker.py"]
