@@ -1,15 +1,16 @@
 FROM python:3.10-slim
 
-WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# System deps (kept minimal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Only what we really need for Serverless
+WORKDIR /app
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy handler + optional VPS proxy helper
 COPY handler.py vps_client.py ./
 
-# Start the Runpod Serverless poller
+# Runpod Serverless will start the poller via handler.py
 CMD ["python", "-u", "handler.py"]
