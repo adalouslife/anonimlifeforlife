@@ -1,9 +1,5 @@
 {
   "tests": [
-    {
-      "name": "Ping handler",
-      "input": { "ping": "hello" },
-      "expected": { "ok": true }
-    }
+    { "name": "Ping handler", "input": { "ping": "hello" }, "expected": { "ok": true } }
   ]
 }
