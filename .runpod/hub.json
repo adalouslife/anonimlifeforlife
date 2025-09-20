@@ -1,18 +1,6 @@
 {
-  "version": "1.0.0",
-  "entrypoint": "worker.py",
-  "runtime": "python3.10",
-  "tests": ".runpod/tests.json",
-  "env": [
-    "AUTH_TOKEN",
-    "VPS_BASE_URL",
-    "VPS_ENDPOINT_PATH",
-    "VPS_TIMEOUT_SECONDS",
-    "VPS_POLL_INTERVAL",
-    "VPS_MAX_WAIT"
-  ],
-  "resources": {
-    "cpu": 1,
-    "memory": "2Gi"
-  }
+  "name": "AnonimLife Serverless",
+  "imageType": "Dockerfile",
+  "gpu": false,
+  "readme": "Minimal RunPod Serverless worker that exposes a fast ping for tests and forwards real jobs to a VPS. Build uses the repository Dockerfile and starts the worker entrypoint."
 }
