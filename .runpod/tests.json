@@ -1,9 +1,9 @@
 {
   "tests": [
     {
-      "name": "Basic health check",
+      "name": "Basic container spin-up",
       "input": { "ping": "hello" },
-      "expected": { "status": "ok" }
+      "expected": { "ok": true }
     }
   ]
 }
