@@ -1,15 +1,15 @@
 {
   "version": "1.0.0",
-  "entrypoint": "app.py",
+  "entrypoint": "worker.py",
   "runtime": "python3.10",
   "tests": ".runpod/tests.json",
   "env": [
     "AUTH_TOKEN",
-    "ADAPTER_SYNC",
     "VPS_BASE_URL",
     "VPS_ENDPOINT_PATH",
     "VPS_TIMEOUT_SECONDS",
-    "VPS_PROXY"
+    "VPS_POLL_INTERVAL",
+    "VPS_MAX_WAIT"
   ],
   "resources": {
     "cpu": 1,
