@@ -1,66 +1,18 @@
 {
-  "title": "AnonimLife Fawkes Proxy (CPU)",
-  "description": "Accepts an image URL, optionally proxies to your VPS Fawkes service, and returns an output URL.",
-  "type": "serverless",
-  "category": "image",
-  "config": {
-    "runsOn": "CPU",
-    "containerDiskInGb": 10,
-    "env": [
-      {
-        "key": "RUNPOD_OFFLINE",
+  "name": "AnonimLifeFawkes",
+  "description": "Anonymizes user-uploaded images using Fawkes. Send image_url or image_b64, receive cloaked image.",
+  "examples": [
+    {
+      "name": "Ping example",
+      "request": {
         "input": {
-          "type": "boolean",
-          "name": "Offline (no external HTTP)",
-          "description": "Leave ON for Hub tests. Turn OFF when you want real network/VPS calls.",
-          "default": true,
-          "trueValue": "true",
-          "falseValue": "false"
+          "ping": "hello"
         }
       },
-      {
-        "key": "VPS_PROXY",
-        "input": {
-          "type": "boolean",
-          "name": "Send work to VPS",
-          "description": "If enabled (and Offline is OFF), jobs are forwarded to your VPS endpoint.",
-          "default": false,
-          "trueValue": "true",
-          "falseValue": "false"
-        }
-      },
-      {
-        "key": "VPS_BASE_URL",
-        "input": {
-          "type": "string",
-          "name": "VPS base URL",
-          "description": "e.g. https://anon.donkeybee.com",
-          "default": ""
-        }
-      },
-      {
-        "key": "VPS_ENDPOINT_PATH",
-        "input": {
-          "type": "string",
-          "name": "VPS endpoint path",
-          "description": "Path that accepts POST { image_url } and returns { output_url }",
-          "default": "/api/fawkes/cloak"
-        }
+      "expected": {
+        "status": "ok"
       }
-    ],
-    "presets": {
-      "Default (Hub Test Safe)": [
-        { "key": "RUNPOD_OFFLINE", "value": "true" },
-        { "key": "VPS_PROXY", "value": "false" },
-        { "key": "VPS_BASE_URL", "value": "" },
-        { "key": "VPS_ENDPOINT_PATH", "value": "/api/fawkes/cloak" }
-      ],
-      "Forward to anon.donkeybee.com": [
-        { "key": "RUNPOD_OFFLINE", "value": "false" },
-        { "key": "VPS_PROXY", "value": "true" },
-        { "key": "VPS_BASE_URL", "value": "https://anon.donkeybee.com" },
-        { "key": "VPS_ENDPOINT_PATH", "value": "/api/fawkes/cloak" }
-      ]
     }
-  }
+  ],
+  "timeout": 60
 }
