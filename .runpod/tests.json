@@ -1,0 +1,20 @@
+{
+  "timeout": 60,
+  "tests": [
+    {
+      "name": "self-test",
+      "input": { "self_test": true },
+      "expected": { "ok": true }
+    },
+    {
+      "name": "docs-style-echo",
+      "input": { "text": "Hello world", "language": "en" },
+      "expected": { "ok": true }
+    }
+  ],
+  "config": {
+    "env": [
+      { "key": "VPS_BASE_URL", "value": "https://example.invalid" }
+    ]
+  }
+}
