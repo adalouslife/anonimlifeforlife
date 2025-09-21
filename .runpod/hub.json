@@ -1,0 +1,33 @@
+
+### .runpod/hub.json
+> You asked for the **custom format** from docs — here it is, tuned for **CPU** (change to GPU if you really need it). Nothing here “drives” your runtime; it’s just metadata + environment UI.
+
+```json
+{
+  "title": "Anonimlifeforlife",
+  "description": "Minimal, stable RunPod Serverless worker that calls a VPS and returns a download URL.",
+  "type": "serverless",
+  "category": "image",
+  "iconUrl": "https://raw.githubusercontent.com/adalouslife/anonimlifeforlife/main/.runpod/icon.png",
+  "config": {
+    "runsOn": "CPU",
+    "containerDiskInGb": 20,
+    "presets": [
+      {
+        "name": "Default",
+        "defaults": {
+          "VPS_BASE_URL": "https://anon.donkeybee.com",
+          "VPS_ENDPOINT_PATH": "/api/fawkes/cloak",
+          "VPS_TIMEOUT_SECONDS": "180"
+        }
+      }
+    ],
+    "env": [
+      { "key": "VPS_BASE_URL",       "input": { "name": "VPS Base URL",       "type": "string", "default": "https://anon.donkeybee.com" } },
+      { "key": "VPS_ENDPOINT_PATH",  "input": { "name": "VPS Endpoint Path",  "type": "string", "default": "/api/fawkes/cloak" } },
+      { "key": "VPS_TIMEOUT_SECONDS","input": { "name": "VPS Timeout (s)",    "type": "string", "default": "180" } },
+      { "key": "VPS_AUTH_TOKEN",     "input": { "name": "VPS Auth Token",     "type": "string", "default": "" } },
+      { "key": "VPS_PROXY",          "input": { "name": "Proxy (optional)",   "type": "string", "default": "" } }
+    ]
+  }
+}
