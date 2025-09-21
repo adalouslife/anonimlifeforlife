@@ -1,8 +1,8 @@
 {
   "tests": [
     {
-      "name": "Ping returns ok",
-      "input": { "ping": true },
+      "name": "ping",
+      "input": { "ping": "ok" },
       "expected": { "ok": true }
     }
   ]
