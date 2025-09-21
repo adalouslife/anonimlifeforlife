@@ -1,6 +1,46 @@
 {
   "name": "AnonimLife Serverless",
-  "imageType": "Dockerfile",
-  "gpu": false,
-  "readme": "Minimal RunPod Serverless worker that exposes a fast ping for tests and forwards real jobs to a VPS. Build uses the repository Dockerfile and starts the worker entrypoint."
+  "version": "0.1.0",
+  "image": "dockerfile",
+  "readme": "README.md",
+  "environment": {
+    "VPS_BASE_URL": {
+      "default": "https://anon.donkeybee.com",
+      "description": "Your VPS base URL (Caddy front).",
+      "required": true
+    },
+    "VPS_ENDPOINT_PATH": {
+      "default": "/api/fawkes/cloak",
+      "description": "Path on VPS for cloak endpoint.",
+      "required": true
+    },
+    "AUTH_TOKEN": {
+      "default": "",
+      "description": "X-Auth-Token for VPS (if required).",
+      "required": false,
+      "secret": true
+    },
+    "VPS_TIMEOUT_SECONDS": {
+      "default": "900",
+      "description": "HTTP timeout for VPS call.",
+      "required": false
+    }
+  },
+  "test_input": { "ping": "ok" },
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "image_url": { "type": "string" },
+      "ping": { "type": "string" }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": { "type": "string" },
+      "output_url": { "type": "string" },
+      "ok": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  }
 }
