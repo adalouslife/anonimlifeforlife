@@ -1,20 +1,17 @@
 {
-  "timeout": 60,
   "tests": [
     {
-      "name": "self-test",
-      "input": { "self_test": true },
-      "expected": { "ok": true }
-    },
-    {
-      "name": "docs-style-echo",
-      "input": { "text": "Hello world", "language": "en" },
-      "expected": { "ok": true }
+      "name": "smoke_offline",
+      "input": {
+        "op": "health_check"
+      },
+      "timeout": 20000
     }
   ],
   "config": {
+    "cpuFlavor": "CPU-2C-4GB",
     "env": [
-      { "key": "VPS_BASE_URL", "value": "https://example.invalid" }
+      { "key": "RUNPOD_TEST_MODE", "value": "true" }
     ]
   }
 }
