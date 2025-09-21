@@ -1,8 +1,3 @@
-
-### .runpod/hub.json
-> You asked for the **custom format** from docs — here it is, tuned for **CPU** (change to GPU if you really need it). Nothing here “drives” your runtime; it’s just metadata + environment UI.
-
-```json
 {
   "title": "Anonimlifeforlife",
   "description": "Minimal, stable RunPod Serverless worker that calls a VPS and returns a download URL.",
