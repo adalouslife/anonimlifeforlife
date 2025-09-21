@@ -1,8 +1,9 @@
 {
+  "timeout": 30,
   "tests": [
     {
-      "name": "ping",
-      "input": { "ping": "ok" },
+      "name": "self-test",
+      "input": { "self_test": true },
       "expected": { "ok": true }
     }
   ]
